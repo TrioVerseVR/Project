@@ -9,6 +9,8 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import HomeScreen from '@/app/(tabs)/index';
 import ProfileScreen from '@/app/(tabs)/DetailedScreen';
 import ExploreScreen from '@/app/(tabs)/explore';
+import { Card } from 'react-native-elements';
+import CardDetailsPage from './CardDetailsPage';
 
 const Tabs = createBottomTabNavigator();
 
@@ -25,7 +27,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
-        tabBarPosition: 'top',
+        tabBarPosition: 'bottom',
         tabBarStyle: Platform.select({
           ios: {
             position: 'absolute',
@@ -42,22 +44,31 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />, 
           headerShown: false,
         }} 
+      /> 
+      <Tabs.Screen 
+        name="explore" 
+        component={ExploreScreen} 
+        options={{ 
+          title: 'Explore', 
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="magnifyingglass" color={color} />, 
+          headerShown: false,
+        }} 
       />
       <Tabs.Screen 
         name="DetailedScreen" 
         component={ProfileScreen} 
         options={{ 
           title: 'Profile', 
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person" color={color} />, 
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.crop.circle" color={color} />, 
           headerShown: false,
         }} 
       />
-      <Tabs.Screen 
-        name="explore" 
-        component={ExploreScreen} 
+        <Tabs.Screen 
+        name="CardDetailsPage" 
+        component={CardDetailsPage} 
         options={{ 
-          title: 'Explore', 
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />, 
+          title: 'details', 
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.crop.circle" color={color} />, 
           headerShown: false,
         }} 
       />

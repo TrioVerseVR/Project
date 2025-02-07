@@ -1,189 +1,242 @@
-import React, { useState } from 'react';
-import { View, TextInput, ScrollView, Image, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { Icon, Button } from 'react-native-elements';
-import Collapsible from 'react-native-collapsible';
-import { useNavigation } from '@react-navigation/native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Switch,
+  Alert,
+  Image,
+} from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { supabase } from '@/lib/supabase';
 
-export default function DetailedScreen() {
-  const [isCollapsed, setIsCollapsed] = useState(true);
-  const [expandedCard, setExpandedCard] = useState<number | null>(null);
-  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
-  const navigation = useNavigation();
-  const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
+export default function DetailScreen() {
+  const [isEnabled, setIsEnabled] = useState(false);
+  const [user, setUser] = useState<{ username: string; email: string } | null>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Fetch user information on component mount
+    const fetchUser = async () => {
+      const { data: userData, error } = await supabase.auth.getUser();
+      if (error) {
+        Alert.alert('Error', 'Failed to fetch user information');
+      } else if (userData) {
+        setUser({
+          username: userData.user?.user_metadata.username || 'Guest',
+          email: userData.user?.email || 'N/A',
+        });
+        setProfileImage(userData.user?.user_metadata.profileImage || null);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  useEffect(() => {
+    if (profileImage) {
+      const fetchUser = async () => {
+        const { data: userData, error } = await supabase.auth.getUser();
+        if (error) {
+          Alert.alert('Error', 'Failed to fetch user information');
+        } else if (userData) {
+          setUser({
+            username: userData.user?.user_metadata.username || 'Guest',
+            email: userData.user?.email || 'N/A',
+          });
+          setProfileImage(userData.user?.user_metadata.profileImage || null);
+        }
+      };
+      fetchUser();
+    }
+  }, [profileImage]);
+
+  const toggleSwitch = () => setIsEnabled((previousState) => !previousState);
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      Alert.alert('Error', error.message);
+    } else {
+      Alert.alert('Logged Out', 'You have successfully logged out.');
+      // Optionally navigate to the login screen or home page
+    }
   };
 
-  const toggleCard = (index: number) => {
-    setExpandedCard(expandedCard === index ? null : index);
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Denied',
+        'We need permission to access your photos to upload a profile picture.'
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      const uri = result.assets[0].uri;
+      setProfileImage(uri);
+
+      // Upload the image to a storage service (Supabase Storage)
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      
+      const { data, error } = await supabase.storage
+        .from('profile-pics') // Make sure to create a storage bucket
+        .upload(`${Date.now()}.png`, blob);
+      
+      if (error) {
+        Alert.alert('Error', 'Failed to upload image');
+      } else {
+        // Save the image URL in the user's profile metadata
+        const { data: publicUrlData } = supabase.storage
+          .from('profile-pics')
+          .getPublicUrl(data.path);
+      
+        // Update user metadata
+        const { error: updateUserError } = await supabase.auth.updateUser({
+          data: { profileImage: publicUrlData.publicUrl },
+        });
+      
+        if (updateUserError) {
+          Alert.alert('Error', 'Failed to update user profile');
+        } else {
+          Alert.alert('Success', 'Profile picture updated');
+        }
+      }
+    }
   };
-
-  const toggleFilter = (filter: string) => {
-    setSelectedFilters(prevFilters =>
-      prevFilters.includes(filter)
-        ? prevFilters.filter(f => f !== filter)
-        : [...prevFilters, filter]
-    );
-  };
-
-  const cards = [
-    { title: 'Activites', description: 'Description for Activities.', image: 'https://via.placeholder.com/100' },
-    { title: 'Resturants', description: 'Description for Restaurants.', image: 'https://via.placeholder.com/100' },
-    { title: 'Events', description: 'Description for Events.', image: 'https://via.placeholder.com/100' },
-    { title: 'Hotels', description: 'Description for Hotels.', image: 'https://via.placeholder.com/100' },
-    { title: 'Shopping', description: 'Description for Shopping.', image: 'https://via.placeholder.com/100' },
-    { title: 'Services', description: 'Description for Services.', image: 'https://via.placeholder.com/100' },
-    { title: 'Transportation', description: 'Description for Transportation.', image: 'https://via.placeholder.com/100' },
-    { title: 'Health', description: 'Description for Health.', image: 'https://via.placeholder.com/100' },
-    { title: 'Education', description: 'Description for Education.', image: 'https://via.placeholder.com/100' },
-    { title: 'Finance', description: 'Description for Finance.', image: 'https://via.placeholder.com/100' },
-    { title: 'Hiking', description: 'Description for Hiking.', image: 'https://via.placeholder.com/100' }
-  ];
-
-  const filters = ['Activites', 'Resturants', 'Events', 'Hotels', 'Shopping', 'Services', 'Transportation', 'Health', 'Education', 'Finance', 'Hiking'];
 
   return (
-    <ScrollView style={styles.container}>
-      <ScrollView horizontal style={styles.imageSlider}>
-        <Image source={{ uri: 'https://via.placeholder.com/300' }} style={styles.sliderImage} />
-        <Image source={{ uri: 'https://via.placeholder.com/300' }} style={styles.sliderImage} />
-        <Image source={{ uri: 'https://via.placeholder.com/300' }} style={styles.sliderImage} />
-      </ScrollView>
-      <View style={styles.filterSearchContainer}>
-        <TextInput style={styles.searchBar} placeholder="Search..." />
-        <TouchableOpacity onPress={toggleCollapse} style={styles.filterButton}>
-          <Icon name="filter-list" size={30} />
-        </TouchableOpacity>
+    <View style={styles.container}>
+      <Text style={styles.header}>Profile Settings</Text>
+
+      {/* Profile Picture */}
+      <TouchableOpacity onPress={pickImage} style={styles.profileImageContainer}>
+        <Image
+          source={
+            profileImage
+              ? { uri: profileImage }
+              : require('@/assets/images/default-profile.png') // Fallback profile picture
+          }
+          style={styles.profileImage}
+        />
+        <Text style={styles.changePhotoText}>Change Photo</Text>
+      </TouchableOpacity>
+
+      {/* User Information */}
+      <Text style={styles.infoText}>Username: {user?.username}</Text>
+      <Text style={styles.infoText}>Email: {user?.email}</Text>
+
+      {/* Example Setting: Notifications */}
+      <View style={styles.settingContainer}>
+        <Text style={styles.settingText}>Enable Notifications</Text>
+        <Switch
+          trackColor={{ false: '#767577', true: '#81b0ff' }}
+          thumbColor={isEnabled ? '#f5dd4b' : '#f4f3f4'}
+          onValueChange={toggleSwitch}
+          value={isEnabled}
+        />
       </View>
-      <Collapsible collapsed={isCollapsed}>
-        <View style={styles.filterOptions}>
-          {filters.map((filter, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.filterOptionButton,
-                selectedFilters.includes(filter) ? styles.activeFilter : null
-              ]}
-              onPress={() => toggleFilter(filter)}
-            >
-              <Text style={styles.filterOptionText}>{filter}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </Collapsible>
-      <View style={styles.cardsContainer}>
-        {cards
-          .filter(card =>
-            selectedFilters.length === 0 ||
-            selectedFilters.some(filter => card.title.toLowerCase().includes(filter.toLowerCase()))
+
+      {/* Change Password */}
+      <TouchableOpacity
+        style={styles.settingContainer}
+        onPress={() => console.log('Change Password')}
+      >
+        <Text style={styles.settingText}>Change Password</Text>
+      </TouchableOpacity>
+
+      {/* Privacy Settings */}
+      <TouchableOpacity
+        style={styles.settingContainer}
+        onPress={() => console.log('Privacy Settings')}
+      >
+        <Text style={styles.settingText}>Privacy Settings</Text>
+      </TouchableOpacity>
+
+      {/* Delete Account */}
+      <TouchableOpacity
+        style={styles.settingContainer}
+        onPress={() =>
+          Alert.alert(
+            'Delete Account',
+            'Are you sure you want to delete your account?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Delete', onPress: () => console.log('Account Deleted') },
+            ]
           )
-          .map((card, index) => (
-            <TouchableOpacity key={index} style={styles.card} onPress={() => toggleCard(index)}>
-              <Image source={{ uri: card.image }} style={styles.cardImage} />
-              <View style={styles.cardContent}>
-                <Text style={styles.cardTitle}>{card.title}</Text>
-                <Collapsible collapsed={expandedCard !== index}>
-                  <Text style={styles.cardDescription}>{card.description}</Text>
-                  <Button
-                    title="Learn More"
-                    buttonStyle={styles.cardButton}
-                    // onPress={() => navigation.navigate('DetailScreen', { card })}
-                  />
-                </Collapsible>
-              </View>
-            </TouchableOpacity>
-          ))}
-      </View>
-    </ScrollView>
+        }
+      >
+        <Text style={[styles.settingText, { color: 'red' }]}>Delete Account</Text>
+      </TouchableOpacity>
+
+      {/* Logout Button */}
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Text style={styles.logoutText}>Logout</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  imageSlider: {
-    flexDirection: 'row',
-    marginVertical: 16,
-  },
-  sliderImage: {
-    width: 300,
-    height: 200,
-    marginHorizontal: 8,
-  },
-  filterSearchContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 16,
-    paddingHorizontal: 16,
-  },
-  searchBar: {
-    flex: 1,
-    height: 40,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    marginRight: 8,
-  },
-  filterButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  filterOptions: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    flexWrap: 'wrap',
-    flexDirection: 'row',
-  },
-  filterOptionButton: {
-    backgroundColor: '#f0f0f0',
-    padding: 10,
-    borderRadius: 8,
-    margin: 5,
-    flexBasis: '30%',
-    alignItems: 'center',
-  },
-  activeFilter: {
-    backgroundColor: '#007bff',
-    color: '#fff',
-  },
-  filterOptionText: {
-    fontSize: 16,
-  },
-  cardsContainer: {
-    paddingHorizontal: 16,
-  },
-  card: {
-    flexDirection: 'row',
+    padding: 20,
     backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 8,
-    marginVertical: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
   },
-  cardImage: {
+  header: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  profileImageContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  profileImage: {
     width: 100,
     height: 100,
-    borderRadius: 8,
-    marginRight: 16,
+    borderRadius: 50,
+    marginBottom: 10,
   },
-  cardContent: {
-    flex: 1,
-    justifyContent: 'center',
+  changePhotoText: {
+    fontSize: 16,
+    color: '#007bff',
   },
-  cardTitle: {
+  infoText: {
+    fontSize: 18,
+    marginBottom: 10,
+  },
+  settingContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+  },
+  settingText: {
+    fontSize: 18,
+  },
+  logoutButton: {
+    marginTop: 30,
+    padding: 15,
+    backgroundColor: '#ff4d4d',
+    alignItems: 'center',
+    borderRadius: 5,
+  },
+  logoutText: {
+    color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  cardDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginVertical: 8,
-  },
-  cardButton: {
-    backgroundColor: '#007bff',
   },
 });

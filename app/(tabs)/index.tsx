@@ -1,185 +1,208 @@
 import React, { useState } from 'react';
-import { View, TextInput, ScrollView, Image, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { Icon, Button } from 'react-native-elements';
-import Collapsible from 'react-native-collapsible';
+import { View, TextInput, ScrollView, Image, StyleSheet, TouchableOpacity, Text, FlatList, Dimensions } from 'react-native';
+import { Icon } from 'react-native-elements';
 
-export default function HomeScreen() {
-  const [isCollapsed, setIsCollapsed] = useState(true);
-  const [expandedCard, setExpandedCard] = useState<number | null>(null);
-  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
-  const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
-  };
+interface CardProps {
+  card: { title: string; description: string; image: string };
+}
 
-  const toggleCard = (index: number) => {
-    setExpandedCard(expandedCard === index ? null : index);
-  };
+const Card: React.FC<CardProps> = ({ card }) => (
+  <TouchableOpacity style={styles.card}>
+    <Image source={{ uri: card.image }} style={styles.cardImage} />
+    <View style={styles.cardContent}>
+      <Text style={styles.cardTitle}>{card.title}</Text>
+      <Text style={styles.cardDescription}>{card.description}</Text>
+      <TouchableOpacity style={styles.cardButton}>
+        <Text style={styles.cardButtonText}>Learn More</Text>
+      </TouchableOpacity>
+    </View>
+  </TouchableOpacity>
+);
 
-  const toggleFilter = (filter: string) => {
-    setSelectedFilters(prevFilters =>
-      prevFilters.includes(filter)
-        ? prevFilters.filter(f => f !== filter)
-        : [...prevFilters, filter]
-    );
-  };
-  
+const App = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState<string>('All');
+
+  const filters = ['All', 'Popular', 'Top Rated', 'Recommended', 'Budget', 'Luxury'];
+
   const cards = [
-    { title: 'Activites', description: 'Description for Activities.', image: 'https://via.placeholder.com/100' },
-    { title: 'Resturants', description: 'Description for Restaurants.', image: 'https://via.placeholder.com/100' },
-    { title: 'Events', description: 'Description for Events.', image: 'https://via.placeholder.com/100' },
-    { title: 'Hotels', description: 'Description for Hotels.', image: 'https://via.placeholder.com/100' },
-    { title: 'Shopping', description: 'Description for Shopping.', image: 'https://via.placeholder.com/100' },
-    { title: 'Services', description: 'Description for Services.', image: 'https://via.placeholder.com/100' },
-    { title: 'Transportation', description: 'Description for Transportation.', image: 'https://via.placeholder.com/100' },
-    { title: 'Health', description: 'Description for Health.', image: 'https://via.placeholder.com/100' },
-    { title: 'Hiking', description: 'Description for Hiking.', image: 'https://via.placeholder.com/100' }
+    { title: 'Transportation', description: 'Find the best ways to get around.', image: 'https://via.placeholder.com/300', category: 'Popular' },
+    { title: 'Restaurants', description: 'Top places to eat and dine.', image: 'https://via.placeholder.com/300', category: 'Top Rated' },
+    { title: 'Hotels', description: 'Comfortable places to stay.', image: 'https://via.placeholder.com/300', category: 'Recommended' },
+    { title: 'Hiking', description: 'Explore scenic trails.', image: 'https://via.placeholder.com/300', category: 'Popular' },
+    { title: 'Shopping', description: 'Best spots for shopping.', image: 'https://via.placeholder.com/300', category: 'Top Rated' },
+    { title: 'Events', description: 'Don’t miss out on local events.', image: 'https://via.placeholder.com/300', category: 'Luxury' },
   ];
 
-  const filters = ['Activites', 'Resturants', 'Events', 'Hotels', 'Shopping', 'Services', 'Transportation', 'Health', 'Hiking'];
+  // Filter cards based on the selected filter and search query
+  const filteredCards = cards.filter((card) => {
+    const matchesSearch = card.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = selectedFilter === 'All' || card.category === selectedFilter;
+    return matchesSearch && matchesFilter;
+  });
+
+  const windowHeight = Dimensions.get('window').height;
 
   return (
-    <ScrollView style={styles.container}>
-      <ScrollView horizontal style={styles.imageSlider}>
-        <Image source={{ uri: 'https://a.cdn-hotels.com/gdcs/production64/d739/9232e037-fd2c-4346-8d47-efb629941ed8.jpg' }} style={styles.sliderImage} />
-        <Image source={{ uri: 'https://www.vijesti.me/data/images/2023/04/10/16/5481086_niksic.me_ls.jpg' }} style={styles.sliderImage} />
-        <Image source={{ uri: 'https://a.cdn-hotels.com/gdcs/production170/d1114/ae23600f-9fa7-4445-9cdd-e3ea82eed8eb.jpg' }} style={styles.sliderImage} />
-      </ScrollView>
-      <View style={styles.filterSearchContainer}>
-        <TextInput style={styles.searchBar} placeholder="Search..." />
-        <TouchableOpacity onPress={toggleCollapse} style={styles.filterButton}>
-          <Icon name="filter-list" size={30} />
-        </TouchableOpacity>
+    <View style={styles.container}>
+      {/* Search Bar */}
+      <View style={styles.searchBar}>
+        <Icon name="search" size={24} color="#888" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search..."
+          placeholderTextColor="#888"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
       </View>
-      <Collapsible collapsed={isCollapsed}>
-        <View style={styles.filterOptions}>
-          {filters.map((filter, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.filterOptionButton,
-                selectedFilters.includes(filter) ? styles.activeFilter : null
-              ]}
-              onPress={() => toggleFilter(filter)}
+
+      {/* Filter Tabs */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filtersContainer}
+      >
+        {filters.map((filter) => (
+          <TouchableOpacity
+            key={filter}
+            style={[styles.filterButton, selectedFilter === filter && styles.filterButtonSelected]}
+            onPress={() => setSelectedFilter(filter)}
+          >
+            <Text
+              style={[styles.filterText, selectedFilter === filter && styles.filterTextSelected]}
             >
-              <Text style={styles.filterOptionText}>{filter}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </Collapsible>
-      <View style={styles.cardsContainer}>
-        {cards
-          .filter(card =>
-            selectedFilters.length === 0 ||
-            selectedFilters.some(filter => card.title.toLowerCase().includes(filter.toLowerCase()))
-          )
-          .map((card, index) => (
-            <TouchableOpacity key={index} style={styles.card} onPress={() => toggleCard(index)}>
-              <Image source={{ uri: card.image }} style={styles.cardImage} />
-              <View style={styles.cardContent}>
-                <Text style={styles.cardTitle}>{card.title}</Text>
-                <Collapsible collapsed={expandedCard !== index}>
-                  <Text style={styles.cardDescription}>{card.description}</Text>
-                  <Button
-                    title="Learn More"
-                    buttonStyle={styles.cardButton}
-                    // onPress={() => navigation.navigate('DetailScreen', { card })}
-                  />
-                </Collapsible>
-              </View>
-            </TouchableOpacity>
-          ))}
+              {filter}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Cards Container with Fixed Height */}
+      <View style={[styles.cardsContainer, { height: windowHeight * 0.6 }]}>
+        <FlatList
+          data={filteredCards}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={({ item }) => <Card card={item} />}
+          ListEmptyComponent={<Text style={styles.emptyText}>No items found.</Text>}
+        />
       </View>
-    </ScrollView>
+    </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  imageSlider: {
-    flexDirection: 'row',
-    marginVertical: 16,
-  },
-  sliderImage: {
-    width: 370,
-    height: 200,
-    marginHorizontal: 8,
-  },
-  filterSearchContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 16,
-    paddingHorizontal: 16,
+    backgroundColor: '#f5f7fa',
   },
   searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 45,
+    marginBottom: 10,
+    backgroundColor: '#fff',
+    borderRadius: 50,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  searchInput: {
     flex: 1,
-    height: 40,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    marginRight: 8,
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#000',
+  },
+  filtersContainer: {
+    height: 60,
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
   filterButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  filterOptions: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    flexWrap: 'wrap',
-    flexDirection: 'row',
-  },
-  filterOptionButton: {
-    backgroundColor: '#f0f0f0',
-    padding: 10,
-    borderRadius: 8,
-    margin: 5,
-    flexBasis: '30%',
+    borderRadius: 20,
+    backgroundColor: '#e0e0e0',
+    marginRight: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  activeFilter: {
+  filterButtonSelected: {
     backgroundColor: '#007bff',
-    color: '#fff',
   },
-  filterOptionText: {
-    fontSize: 16,
+  filterText: {
+    fontSize: 14,
+    color: '#000',
+  },
+  filterTextSelected: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   cardsContainer: {
-    paddingHorizontal: 16,
+    flexGrow: 1,
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 5,
   },
   card: {
-    flexDirection: 'row',
     backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 8,
-    marginVertical: 8,
+    borderRadius: 15,
+    marginBottom: 15,
+    overflow: 'hidden',
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowRadius: 10,
+    elevation: 5,
   },
   cardImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-    marginRight: 16,
+    width: '100%',
+    height: 200,
   },
   cardContent: {
-    flex: 1,
-    justifyContent: 'center',
+    padding: 15,
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
   },
   cardDescription: {
     fontSize: 14,
     color: '#666',
-    marginVertical: 8,
+    marginBottom: 10,
   },
   cardButton: {
     backgroundColor: '#007bff',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 5,
+    alignSelf: 'flex-start',
+  },
+  cardButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 20,
+    color: '#999',
   },
 });
+
+export default App;
